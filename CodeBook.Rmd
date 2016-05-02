@@ -2,13 +2,13 @@
 title: "CodeBook.md"
 author: "Soumya R Das"
 date: "May 1, 2016"
-output: html_document
+output: md_document
 ---
 
 ## Getting and Cleaning Data Course Project
 
 ### Requirements for the Project:
-> Create one R script named run_analysis.R that does the following:
+> Analyze the data collected in the project named - Human Activity Recognition Using Smartphones Dataset. Create one R script named run_analysis.R that does the following:
 >
   * The submitted data set is tidy.
   * Merges the training and the test sets to create one data set.
@@ -25,138 +25,48 @@ output: html_document
   * The README that explains the analysis files is clear and understandable.
   * The work submitted for this project is the work of the student who submitted it.
   
+### Data for the project
+
+The experiments have been carried out with a group of 30 volunteers within an age bracket of 19-48 years. Each person performed six activities (WALKING, WALKING_UPSTAIRS, WALKING_DOWNSTAIRS, SITTING, STANDING, LAYING) wearing a smartphone (Samsung Galaxy S II) on the waist. Using its embedded accelerometer and gyroscope, we captured 3-axial linear acceleration and 3-axial angular velocity at a constant rate of 50Hz. The experiments have been video-recorded to label the data manually. The obtained dataset has been randomly partitioned into two sets, where 70% of the volunteers was selected for generating the training data and 30% the test data. 
+
+The sensor signals (accelerometer and gyroscope) were pre-processed by applying noise filters and then sampled in fixed-width sliding windows of 2.56 sec and 50% overlap (128 readings/window). The sensor acceleration signal, which has gravitational and body motion components, was separated using a Butterworth low-pass filter into body acceleration and gravity. The gravitational force is assumed to have only low frequency components, therefore a filter with 0.3 Hz cutoff frequency was used. From each window, a vector of features was obtained by calculating variables from the time and frequency domain. 
+
+Full data for the analysis can be downloaded from the below link
+https://d396qusza40orc.cloudfront.net/getdata%2Fprojectfiles%2FUCI%20HAR%20Dataset.zip
+
+### Data Overview
+The dataset includes the following files:
+
+* 'README.txt'
+* 'features_info.txt': Shows information about the variables used on the feature vector.
+* 'features.txt': List of all features.
+* 'activity_labels.txt': Links the class labels with their activity name.
+* 'train/X_train.txt': Training set.
+* 'train/y_train.txt': Training labels.
+* 'test/X_test.txt': Test set.
+* 'test/y_test.txt': Test labels.
+
+The following files are available for the train and test data. Their descriptions are equivalent. 
+
+* 'train/subject_train.txt': Each row identifies the subject who performed the activity for each window sample. Its range is from 1 to 30. 
+* 'train/Inertial Signals/total_acc_x_train.txt': The acceleration signal from the smartphone accelerometer X axis in standard gravity units 'g'. Every row shows a 128 element vector. The same description applies for the 'total_acc_x_train.txt' and 'total_acc_z_train.txt' files for the Y and Z axis. 
+* 'train/Inertial Signals/body_acc_x_train.txt': The body acceleration signal obtained by subtracting the gravity from the total acceleration. 
+* 'train/Inertial Signals/body_gyro_x_train.txt': The angular velocity vector measured by the gyroscope for each window sample. The units are radians/second. 
+
+
 ### Overall Process:  
 The below process was followed to arrive at the two tidy data sets required for the project.
 
-#### 1. Merge the training and the test sets to create one data set.
-I am using the dplyr package to select, rename and mutate data tables in this R script, so I load the package first. I also load the activity labels and the features data into data tables.
+1. The text files are to be comsumed and filled into data tables for the analysis.
+2. The activity_labels.txt file contains the different activities that can be performed
+3. The features.txt file contains the different measurements that can be takes
+4. The test/X_test.txt and test/X_train.txt files contain 561 different type of measurements(variables) for about 30 subjects. There can be multiple rows for each subject in each file. The number of rows in each file are also different.
+4. Data from the two files are merged into a single data table(using rbind()). Similaryly, data from  y_test.txt and y_train.txt are merged and subject_test.txt and subject_train.txt are merged.
+5. Column/Variable names in the resultant data sets are then changed to make them more readable and meaningful (instead of names like V1, V2, etc)
+6. As the requirement clearly mentions that we only need to analyze measurements corresponding to mean and standard deviation, only the columns containing "mean" and "std" are taken into consideration
+7. The data sets obtained in step 4 are then merged using cbind() to give the final data set. 
+8. The final data set obtained in Step 7 is then grouped by Activity and Subject columns and summarised using the mean function. 
+9. Both the data sets produced by the Step 7 and Step 8 are then written to file using the row.names = FALSE clause.
 
-```{r}
-# Read the activity labels and features data sets that are common to both train and test data
-activity_labels <- read.table("./activity_labels.txt")
-features <- read.table("./features.txt")
-```
-
-I also read the first set of test data from the files into data tables X_test, Y_test and subject_test 
-
-```{r}
-# Read test data
-X_test <- read.table("./test/X_test.txt")
-Y_test <- read.table("./test/Y_test.txt")
-subject_test <- read.table("./test/subject_test.txt")
-```
-
-Similar code can be written to read the second set of training data from the files into data tables X_train, Y_train and subject_train
-
-```{r}
-# Read training data
-X_train <- read.table("./train/X_train.txt")
-Y_train <- read.table("./train/Y_train.txt")
-subject_train <- read.table("./train/subject_train.txt")
-```
-
-After reading test and train data, they are merged using the rbind() function. The order of rows have to be maintained in all the resultant data sets X_test_train, Y_test_train and subject_test_train - first the test data and then the training data
-```{r, eval=FALSE}
-X_test_train <- rbind(X_test,X_train)
-Y_test_train <- rbind(Y_test,Y_train)
-subject_test_train <- rbind(subject_test, subject_train)
-```
-
-#### 2. Extract only the measurements on the mean and standard deviation for each     measurement.
-I have already read the set of features into the features data table previously. From that set, I filter out the ones that contain "mean" or "std" (assuming std stands for standard deviation) - using the grep() function for searching and the filter() verb of dplyr for filtering out the data set.
-
-NOTE: There are some features(or measurements) which contain something like meanFreq which I am excluding for my analysis. The resulting feature set for analysis is stored in a data table called sub_features
-```{r eval=FALSE}
-# Extract only the measurements on the mean and standard deviation for each measurement.
-sub_features <- filter(features, grepl("mean|std",V2), !grepl("meanFreq",V2))
-```
-
-I then use the sub_features data set to modify the X_test_train data set to only contain variables which have mean or std measurements as given below.
-```{r eval=FALSE}
-# Use only the previously obtained subset of variables/measurements in the final subset
-X_test_train <- X_test_train[,sub_features$V2]
-```
-
-#### 3. Use descriptive activity names to name the activities in the data set
-Before the final data set is built, I rename the variables in the X_test_train by using the row values in the V2 column of sub_features. These are basically the names of the measurements(mean and std) that we are considering for this analysis.
-
-I also rename some variables to make more meaningful names like given below. For example, V1 column of activity_labels is named  activityId and V2 column is named activityName. These columns are further used to column bind rows into the final data set.
-```{r eval=FALSE}
-names(X_test_train) <- sub_features$V2
-
-# Rename columns Y_test_train to meaningful/descriptive names
-Y_test_train <- rename(Y_test_train, activity = V1)
-
-# Rename subject_test column to give descriptive name
-subject_test_train <- rename(subject_test_train, subjectId = V1)
-activity_labels <- rename(activity_labels, activityId = V1, activityName = V2)
-```
-
-I also use the merge() function to join the activity column of Y_test_train and the activityID column of activity_labels so that I can get the activityName column in the Y_test_train data set.
-```{r eval=FALSE}
-# Merge activity labels into Y_test_train
-Y_test_train <- merge(Y_test_train, activity_labels, by.x = "activity", by.y = "activityId", all = TRUE)
-```
-
-#### 4. Combine all the dataset to arrive at the final data set.
-Now that the columns/variables have been renamed, I arrive at the final data set by just combining the columns of the individual data sets using the cbind() function. I also use the select() function to remove the activity variable(containing ids or numbers) from the final data set "final_data" so that we do not have both activity names and the ids corresponding to them in the same data set(they represent the same data, so two columns are not required)
-```{r eval=FALSE}
-# Combine all the data by column binding the obtained data tables
-final_data <- cbind(subject_test_train, Y_test_train, X_test_train)
-final_data <- select(final_data, -activity)
-```
-
-#### 5. Appropriately label the data set with descriptive variable names.
-For showing descriptive names in the final data set, I use a series of gsub commands which do the following.
-
-1. 't' at the start of a variable is change to 'Time'
-2. 'f' at the start of a variable is change to 'Frequency'
-3. '-', '(' and ')' symbols are removed from the variable names
-4. 'mean' is changed to 'Mean'
-5. 'std' is changed to 'Standard'
-6. 'Acc' is changed to 'Accelerometer'
-7. 'Gyro' is changed to 'Gyroscope'
-8. 'Mag' is changed to 'Magnitude'
-9.  BodyBody' is changed to 'Body'
-
-
-Example renaming is as below:
-```{r eval=FALSE}
-names(final_data)<-gsub("-", "", names(final_data))
-names(final_data)<-gsub("\\(", "", names(final_data))
-names(final_data)<-gsub(")", "", names(final_data))
-names(final_data)<-gsub("mean", "Mean", names(final_data))
-```
-
-I also change the X, Y and Z at the end of the variable names to 'InXaxis', 'InYaxis' and 'InZaxis' to make it more meaningful.
-
-```{r eval=FALSE}
-names(final_data)<-gsub("X$", "InXaxis", names(final_data))
-```
-
-#### 6. Write the data set final_data to file
-I use the following commands to write the final_data data set to file
-
-```{r eval=FALSE}
-setwd("./")
-write.table(final_data, file = "First_Tidy_Dataset_Unsummarized.txt", row.names = FALSE)
-```
-
-#### 7. Create a second, independent tidy data set with the average of each variable for each activity and each subject.
-Now, I use the group_by and summarize_each functions to group the data set final_data on the basis of activity and subjects and then find the average of the measurements.
-
-```{r eval=FALSE}
-final_data_summary <- (final_data %>% 
-                         group_by(activityName, subjectId) %>% 
-                         summarise_each(funs(mean))
-                      )
-```
-
-At the end, write the final summarized data set to file
-```{r eval=FALSE}
-# Write the second data set to file
-setwd("./")
-write.table(final_data_summary, file = "Second_Independent_Summarized_Dataset.txt", row.names = FALSE)
-```
-
+Please refer to the README.md file for detailed explanation of how the result has been arrived at.
 
